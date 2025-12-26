@@ -1,3 +1,8 @@
 opencv-python-headless
 numpy
 pyyaml
+
+# Note: hailo_platform is required but typically installed via 
+# the HailoRT PCIe driver package or a specific .whl file provided by Hailo.
+# It is not available on standard PyPI.
+# hailo_platform
