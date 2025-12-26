@@ -5,7 +5,7 @@ import logging
 import shutil
 import threading
 import yaml
-from .main import DataCollector
+from .main import DataCollectorJetson
 from .utils import load_config
 
 # Configure logging for simulator
@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - SIMULATOR - %(leve
 logger = logging.getLogger("Simulator")
 
 def check_environment():
+    """
+    Check if required dependencies and folders exist for Jetson environment.
+    """
     logger.info("Checking environment...")
     
     # Check Python version
@@ -41,6 +44,9 @@ def check_environment():
     return True
 
 def run_simulation(duration=15):
+    """
+    Run the DataCollectorJetson in a simulated environment.
+    """
     logger.info(f"Starting simulation for {duration} seconds...")
     
     config_path = 'config/config.yaml'
@@ -70,15 +76,13 @@ def run_simulation(duration=15):
     # Force fast capture interval for testing
     config['collection']['interval_seconds'] = 1.0
     
-    # Initialize Collector with patched config
-    # We need to subclass or modify DataCollector to accept dict config instead of path
-    # Or we can write a temp config file. Writing temp config is safer to avoid changing main code too much.
-    
+    # Write temp config
     temp_config_path = 'config/config_sim.yaml'
     with open(temp_config_path, 'w') as f:
         yaml.dump(config, f)
         
-    collector = DataCollector(temp_config_path)
+    # Initialize Collector with patched config
+    collector = DataCollectorJetson(temp_config_path)
     
     # Run in separate thread
     collector_thread = threading.Thread(target=collector.run, daemon=True)
@@ -99,6 +103,9 @@ def run_simulation(duration=15):
     return True
 
 def verify_outputs():
+    """
+    Check if the simulation generated valid output files.
+    """
     logger.info("Verifying outputs...")
     
     base_path = 'dataset'
@@ -112,7 +119,6 @@ def verify_outputs():
         return False
         
     # Check if files generated
-    # We need to check recursively or just check if directory is not empty
     has_images = False
     for root, dirs, files in os.walk(os.path.join(base_path, 'images')):
         if any(f.endswith(('.jpg', '.png')) for f in files):
@@ -133,7 +139,7 @@ def verify_outputs():
         return False
 
 def main():
-    logger.info("=== Data Collector Simulator ===")
+    logger.info("=== Data Collector Simulator (Jetson) ===")
     
     if not check_environment():
         logger.error("Environment check failed. Aborting.")

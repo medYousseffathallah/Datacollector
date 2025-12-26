@@ -8,6 +8,7 @@ from queue import Queue
 logger = logging.getLogger("InferenceEngine")
 
 try:
+    # Import Hailo Platform SDK
     import hailo_platform as hpf
     HAILO_AVAILABLE = True
 except ImportError:
@@ -15,7 +16,16 @@ except ImportError:
     logger.warning("hailo_platform not found. Running in MOCK mode.")
 
 class InferenceEngine:
+    """
+    Wrapper for HailoRT inference engine.
+    Handles model loading, VStream configuration, and inference pipeline.
+    """
     def __init__(self, config):
+        """
+        Initialize the inference engine.
+        Args:
+            config: Inference configuration dictionary.
+        """
         self.config = config['inference']
         self.model_path = self.config['model_path']
         self.input_shape = tuple(self.config['input_shape']) # (640, 640)
@@ -26,22 +36,28 @@ class InferenceEngine:
         self.infer_pipeline = None
         self.hef = None
         
+        # Initialize Hailo hardware if available, else use Mock
         if HAILO_AVAILABLE:
             self._init_hailo()
         else:
             self._init_mock()
 
     def _init_hailo(self):
+        """
+        Initialize HailoRT VDevice, HEF, and Network Groups.
+        """
         try:
+            # Load HEF model file
             self.hef = hpf.HEF(self.model_path)
             
-            # Configure Params
+            # Configure VDevice Parameters
             self.params = hpf.VDevice.create_params()
             # self.params.scheduling_algorithm = hpf.HailoSchedulingAlgorithm.ROUND_ROBIN 
             
+            # Create VDevice (Access to PCIe device)
             self.target = hpf.VDevice(params=self.params)
             
-            # Configure Network Group
+            # Configure Network Group from HEF
             configure_params = hpf.ConfigureParams.create_from_hef(
                 hef=self.hef, 
                 interface=hpf.HailoStreamInterface.PCIe
@@ -51,11 +67,11 @@ class InferenceEngine:
             
             self.network_group_params = self.network_group.create_params()
             
-            # Get Stream Infos
+            # Get Input/Output VStream Information
             self.input_vstream_info = self.hef.get_input_vstream_infos()[0]
             self.output_vstream_infos = self.hef.get_output_vstream_infos()
             
-            # Create Params for VStreams
+            # Create Parameters for VStreams (Quantized=False for float output)
             self.input_vstreams_params = hpf.InputVStreamParams.make_from_network_group(
                 self.network_group, quantized=False, format_type=hpf.FormatType.FLOAT32
             )
@@ -68,13 +84,20 @@ class InferenceEngine:
         except Exception as e:
             logger.error(f"Failed to initialize Hailo: {e}")
             self.target = None
+            global HAILO_AVAILABLE
             HAILO_AVAILABLE = False
             self._init_mock()
 
     def _init_mock(self):
+        """
+        Initialize Mock engine for testing without hardware.
+        """
         logger.info("Initialized Mock Inference Engine.")
 
     def start(self):
+        """
+        Activate the network group and start the inference pipeline.
+        """
         self.running = True
         if HAILO_AVAILABLE and self.target:
             self.network_group.activate(self.network_group_params)
@@ -87,6 +110,9 @@ class InferenceEngine:
             self.pipeline.__enter__()
 
     def stop(self):
+        """
+        Stop the pipeline and release resources.
+        """
         self.running = False
         if HAILO_AVAILABLE and self.target:
             if hasattr(self, 'pipeline') and self.pipeline:
@@ -96,6 +122,13 @@ class InferenceEngine:
             self.target.release()
 
     def preprocess(self, frame):
+        """
+        Preprocess the input frame for the model.
+        Args:
+            frame: Raw input image (numpy array).
+        Returns:
+            Preprocessed frame (resized, normalized, float32).
+        """
         # Resize and Normalize
         resized = cv2.resize(frame, self.input_shape)
         # Assuming model expects float32 normalized 0-1 or 0-255 depending on HEF
@@ -108,14 +141,20 @@ class InferenceEngine:
     def infer(self, frame):
         """
         Run inference on a single frame.
-        Returns: (masks, class_ids, scores)
+        Args:
+            frame: Input image.
+        Returns: 
+            Tuple (masks, class_ids, scores)
         """
         if not self.running:
             return None
 
         processed_frame = self.preprocess(frame)
+        
         if HAILO_AVAILABLE and self.target:
+            # Prepare input dictionary mapping stream name to data
             input_data = {self.input_vstream_info.name: np.expand_dims(processed_frame, axis=0)}
+            # Run inference
             results = self.pipeline.infer(input_data)
             return self.post_process(results, frame.shape)
         else:
@@ -136,6 +175,9 @@ class InferenceEngine:
         return [], [], []
 
     def mock_inference(self, shape):
+        """
+        Generate dummy detection data for testing.
+        """
         # Generate a fake person detection
         h, w = shape[:2]
         

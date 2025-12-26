@@ -5,10 +5,16 @@ import os
 import logging
 
 def load_config(config_path):
+    """
+    Load YAML configuration file.
+    """
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
 def setup_logger(name, level=logging.INFO):
+    """
+    Setup a standard logger with formatting.
+    """
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -62,6 +68,9 @@ def format_yolo_label(class_id, polygons):
     return lines
 
 def ensure_directories(base_path, subdirs):
+    """
+    Ensure all subdirectories exist.
+    """
     for sub in subdirs:
         path = os.path.join(base_path, sub)
         os.makedirs(path, exist_ok=True)

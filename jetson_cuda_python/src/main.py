@@ -13,7 +13,16 @@ from .inference_engine import InferenceEngineJetson
 logger = setup_logger("MainJetson")
 
 class DataCollectorJetson:
+    """
+    Main controller for the Jetson version of the Data Collector.
+    Uses InferenceEngineJetson for CUDA-accelerated inference.
+    """
     def __init__(self, config_path):
+        """
+        Initialize the DataCollector with configuration.
+        Args:
+            config_path: Path to the YAML configuration file.
+        """
         self.config = load_config(config_path)
         self.running = True
         
@@ -38,10 +47,16 @@ class DataCollectorJetson:
         signal.signal(signal.SIGTERM, self.shutdown)
 
     def shutdown(self, signum, frame):
+        """
+        Signal handler for graceful shutdown.
+        """
         logger.info("Shutdown signal received...")
         self.running = False
 
     def run(self):
+        """
+        Main execution loop.
+        """
         logger.info("Starting Data Collector System (Jetson Edition)...")
         
         self.camera_manager.start_all()
@@ -105,12 +120,18 @@ class DataCollectorJetson:
             self.cleanup()
 
     def cleanup(self):
+        """
+        Stop services and release resources.
+        """
         logger.info("Cleaning up resources...")
         self.camera_manager.stop_all()
         self.inference_engine.stop()
         logger.info("Shutdown complete.")
 
 def main():
+    """
+    Entry point of the application.
+    """
     parser = argparse.ArgumentParser(description="Jetson AI Data Collector")
     parser.add_argument('--config', type=str, default='config/config.yaml', help='Path to config file')
     args = parser.parse_args()

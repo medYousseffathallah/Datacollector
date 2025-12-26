@@ -6,6 +6,7 @@ import torch
 logger = logging.getLogger("InferenceEngineJetson")
 
 try:
+    # Ultralytics provides the YOLO engine for CUDA/TensorRT
     from ultralytics import YOLO
     ULTRALYTICS_AVAILABLE = True
 except ImportError:
@@ -13,7 +14,16 @@ except ImportError:
     logger.warning("ultralytics not found. Running in MOCK mode.")
 
 class InferenceEngineJetson:
+    """
+    Inference Engine using Ultralytics YOLO.
+    Supports PyTorch (.pt) and TensorRT (.engine) models on CUDA.
+    """
     def __init__(self, config):
+        """
+        Initialize the inference engine.
+        Args:
+            config: Inference configuration dictionary.
+        """
         self.config = config['inference']
         self.model_path = self.config['model_path'] # Can be .pt or .engine
         self.score_threshold = self.config.get('score_threshold', 0.5)
@@ -26,6 +36,9 @@ class InferenceEngineJetson:
             self._init_mock()
 
     def _init_model(self):
+        """
+        Load the YOLO model and perform warmup.
+        """
         try:
             logger.info(f"Loading YOLO model from {self.model_path} on {self.device}...")
             self.model = YOLO(self.model_path)
@@ -37,20 +50,32 @@ class InferenceEngineJetson:
             self.model = None
 
     def _init_mock(self):
+        """
+        Initialize Mock engine if dependencies are missing.
+        """
         logger.info("Initialized Mock Inference Engine (Jetson).")
 
     def start(self):
+        """
+        No specific start required for PyTorch/Ultralytics models.
+        """
         # Ultralytics models are loaded in init, nothing specific to start
         pass
 
     def stop(self):
+        """
+        No specific cleanup required.
+        """
         # No specific cleanup needed for PyTorch model
         pass
 
     def infer(self, frame):
         """
         Run inference on a single frame.
-        Returns: (masks, class_ids, scores)
+        Args:
+            frame: Input image.
+        Returns: 
+            Tuple (masks, class_ids, scores)
         """
         if self.model is None:
             return self.mock_inference(frame.shape)
@@ -102,6 +127,9 @@ class InferenceEngineJetson:
         return masks, class_ids, scores
 
     def mock_inference(self, shape):
+        """
+        Generate dummy detection data for testing.
+        """
         # Same mock logic as original
         h, w = shape[:2]
         mask = np.zeros((h, w), dtype=np.uint8)

@@ -8,7 +8,16 @@ from queue import Queue, Empty
 logger = logging.getLogger("CameraManager")
 
 class CameraStream:
+    """
+    Manages a single camera RTSP stream in a separate thread.
+    Handles auto-reconnection and buffering.
+    """
     def __init__(self, camera_config):
+        """
+        Initialize the camera stream.
+        Args:
+            camera_config: Dictionary containing camera ID, URL, and name.
+        """
         self.id = camera_config['id']
         self.url = camera_config['url']
         self.name = camera_config.get('name', self.id)
@@ -21,6 +30,9 @@ class CameraStream:
         self.connected = False
         
     def start(self):
+        """
+        Start the capture thread.
+        """
         if self.running:
             return
         self.running = True
@@ -29,13 +41,21 @@ class CameraStream:
         logger.info(f"Camera {self.name} ({self.id}) started.")
 
     def stop(self):
+        """
+        Stop the capture thread.
+        """
         self.running = False
         if self.thread:
             self.thread.join()
         logger.info(f"Camera {self.name} ({self.id}) stopped.")
 
     def _update(self):
+        """
+        Internal loop to read frames from the camera.
+        Handles reconnection logic on failure.
+        """
         if self.url == "test":
+            # Mock mode logic
             while self.running:
                 # Generate dummy frame
                 frame = np.zeros((640, 640, 3), dtype=np.uint8)
@@ -78,13 +98,26 @@ class CameraStream:
         cap.release()
 
     def get_frame(self):
+        """
+        Retrieve the latest captured frame.
+        Returns:
+            numpy array or None if no frame available.
+        """
         with self.lock:
             if self.latest_frame is None:
                 return None
             return self.latest_frame.copy()
 
 class CameraManager:
+    """
+    Manages multiple CameraStream instances.
+    """
     def __init__(self, config):
+        """
+        Initialize all configured cameras.
+        Args:
+            config: Full configuration dictionary.
+        """
         self.cameras = {}
         for cam_conf in config['cameras']:
             if cam_conf.get('enabled', True):
@@ -92,15 +125,25 @@ class CameraManager:
                 self.cameras[cam.id] = cam
     
     def start_all(self):
+        """
+        Start all camera streams.
+        """
         for cam in self.cameras.values():
             cam.start()
             
     def stop_all(self):
+        """
+        Stop all camera streams.
+        """
         for cam in self.cameras.values():
             cam.stop()
             
     def get_frames(self):
-        """Returns a dict of {camera_id: frame} for all connected cameras"""
+        """
+        Get the latest frame from all active cameras.
+        Returns:
+            Dict {camera_id: frame}
+        """
         frames = {}
         for cam_id, cam in self.cameras.items():
             frame = cam.get_frame()

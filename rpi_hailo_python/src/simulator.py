@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - SIMULATOR - %(leve
 logger = logging.getLogger("Simulator")
 
 def check_environment():
+    """
+    Check if required dependencies and folders exist.
+    """
     logger.info("Checking environment...")
     
     # Check Python version
@@ -41,6 +44,10 @@ def check_environment():
     return True
 
 def run_simulation(duration=15):
+    """
+    Run the DataCollector in a simulated environment.
+    Uses 'test' camera URL to trigger mock frame generation.
+    """
     logger.info(f"Starting simulation for {duration} seconds...")
     
     config_path = 'config/config.yaml'
@@ -99,6 +106,9 @@ def run_simulation(duration=15):
     return True
 
 def verify_outputs():
+    """
+    Check if the simulation generated valid output files.
+    """
     logger.info("Verifying outputs...")
     
     base_path = 'dataset'

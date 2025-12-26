@@ -11,7 +11,16 @@ from .utils import ensure_directories
 logger = logging.getLogger("DatasetWriter")
 
 class DatasetWriter:
+    """
+    Handles saving of image frames and YOLO-format labels to disk.
+    Also logs metadata to a local SQLite database.
+    """
     def __init__(self, config):
+        """
+        Initialize the writer.
+        Args:
+            config: Configuration dictionary (storage section).
+        """
         self.config = config['storage']
         self.base_path = self.config['base_path']
         self.train_split = self.config.get('train_split', 0.8)
@@ -24,6 +33,9 @@ class DatasetWriter:
         self.setup_database()
         
     def setup_directories(self):
+        """
+        Create necessary directory structure for YOLO format.
+        """
         # Create YOLO structure
         # dataset/images/train, dataset/images/val
         # dataset/labels/train, dataset/labels/val
@@ -37,6 +49,9 @@ class DatasetWriter:
         logger.info(f"Dataset directories initialized at {self.base_path}")
 
     def setup_database(self):
+        """
+        Initialize the SQLite database schema.
+        """
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         c.execute('''
@@ -56,19 +71,21 @@ class DatasetWriter:
 
     def save_sample(self, frame, camera_id, annotations, classes_detected):
         """
-        Save a frame and its annotations.
-        frame: numpy array
-        camera_id: str
-        annotations: list of YOLO format strings
-        classes_detected: list of class names/ids found
+        Save a frame and its annotations to disk.
+        Args:
+            frame: Image numpy array.
+            camera_id: Source camera identifier.
+            annotations: List of YOLO formatted strings.
+            classes_detected: List of class names present in the frame.
         """
         if not annotations and not self.config.get('save_empty', False):
             return
 
         timestamp = time.time()
+        # Generate unique ID based on camera, time, and UUID
         frame_id = f"{camera_id}_{int(timestamp * 1000)}_{str(uuid.uuid4())[:8]}"
         
-        # Determine split
+        # Determine split (train vs val)
         split = 'train' if random.random() < self.train_split else 'val'
         
         # Paths
@@ -94,6 +111,9 @@ class DatasetWriter:
         logger.debug(f"Saved sample {frame_id} to {split}")
 
     def log_to_db(self, frame_id, camera_id, timestamp, split, img_path, lbl_path, count, classes):
+        """
+        Insert record into SQLite database.
+        """
         try:
             conn = sqlite3.connect(self.db_path)
             c = conn.cursor()
