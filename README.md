@@ -33,6 +33,10 @@ The system is architected into three independent implementations to support diff
 
 ```
 project/
+├── .vscode/                # VS Code Configuration
+│   ├── mock_includes/      # Dummy headers (SQLite, OpenCV, Hailo) for Windows IntelliSense
+│   └── c_cpp_properties.json # C++ IDE config
+│
 ├── rpi_hailo_python/       # RPi 5 + Hailo (Python)
 │   ├── src/                # Source code
 │   ├── config/             # Configuration files
@@ -51,6 +55,15 @@ project/
 │   └── README.md           # Implementation details
 ```
 
-## Getting Started
+## Development vs. Deployment
+
+### Windows Development Environment
+
+This project includes **Mock Headers** in `.vscode/mock_includes/`. These allow you to view and edit C++ code on Windows without seeing "red squiggles" for missing Linux libraries (OpenCV, SQLite, HailoRT).
+
+- **Do not remove** these files; they help VS Code understand the code.
+- They are **ignored** during the actual build on the Raspberry Pi.
+
+### Getting Started
 
 Navigate to the folder matching your hardware and follow the `README.md` inside.
