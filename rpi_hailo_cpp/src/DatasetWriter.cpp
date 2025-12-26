@@ -7,12 +7,14 @@
 
 namespace fs = std::filesystem;
 
-DatasetWriter::DatasetWriter(const StorageConfig& cfg) : config(cfg), db(nullptr) {
+DatasetWriter::DatasetWriter(const StorageConfig& cfg) : config(cfg), db(nullptr), insert_stmt(nullptr) {
     setupDirectories();
     setupDatabase();
+    prepareStatement();
 }
 
 DatasetWriter::~DatasetWriter() {
+    if (insert_stmt) sqlite3_finalize(insert_stmt);
     if (db) sqlite3_close(db);
 }
 
@@ -31,6 +33,7 @@ void DatasetWriter::setupDatabase() {
         return;
     }
     
+    // Create table if not exists
     const char* sql = "CREATE TABLE IF NOT EXISTS frames (" \
                       "id TEXT PRIMARY KEY, camera_id TEXT, " \
                       "timestamp REAL, split TEXT, image_path TEXT);";
@@ -39,6 +42,18 @@ void DatasetWriter::setupDatabase() {
     if (rc != SQLITE_OK) {
         std::cerr << "SQL error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
+    }
+    
+    // Enable WAL mode for better concurrency
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", 0, 0, 0);
+}
+
+void DatasetWriter::prepareStatement() {
+    if (!db) return;
+    const char* sql = "INSERT INTO frames (id, camera_id, split, image_path) VALUES (?, ?, ?, ?);";
+    int rc = sqlite3_prepare_v2(db, sql, -1, &insert_stmt, 0);
+    if (rc != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
     }
 }
 
@@ -80,10 +95,21 @@ void DatasetWriter::saveSample(const cv::Mat& frame,
 
 void DatasetWriter::logToDb(const std::string& id, const std::string& cam_id, 
                           const std::string& split, const std::string& img_path) {
-    if (!db) return;
-    std::string sql = "INSERT INTO frames (id, camera_id, split, image_path) VALUES ('" + 
-                      id + "', '" + cam_id + "', '" + split + "', '" + img_path + "');";
-    char* errMsg = 0;
-    sqlite3_exec(db, sql.c_str(), 0, 0, &errMsg);
-    if (errMsg) sqlite3_free(errMsg);
+    if (!db || !insert_stmt) return;
+
+    // Bind parameters
+    // Index starts at 1
+    sqlite3_bind_text(insert_stmt, 1, id.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(insert_stmt, 2, cam_id.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(insert_stmt, 3, split.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(insert_stmt, 4, img_path.c_str(), -1, SQLITE_STATIC);
+
+    // Execute
+    if (sqlite3_step(insert_stmt) != SQLITE_DONE) {
+        std::cerr << "DB Insert Failed: " << sqlite3_errmsg(db) << std::endl;
+    }
+
+    // Reset for next use
+    sqlite3_reset(insert_stmt);
+    sqlite3_clear_bindings(insert_stmt);
 }

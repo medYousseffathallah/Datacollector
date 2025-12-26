@@ -18,9 +18,11 @@ public:
 private:
     StorageConfig config;
     sqlite3* db;
+    sqlite3_stmt* insert_stmt; // Prepared statement cache
     
     void setupDirectories();
     void setupDatabase();
+    void prepareStatement();
     void logToDb(const std::string& id, const std::string& cam_id, 
                  const std::string& split, const std::string& img_path);
 };
