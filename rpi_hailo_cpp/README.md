@@ -15,9 +15,9 @@ sudo apt install -y libopencv-dev libyaml-cpp-dev libsqlite3-dev
 
 ## Build Instructions
 
-1.  **Navigate to the C++ source directory**:
+1.  **Navigate to the C++ directory**:
     ```bash
-    cd src_cpp
+    cd rpi_hailo_cpp
     ```
 
 2.  **Create a build directory**:
@@ -39,7 +39,7 @@ Run the compiled executable from the project root (so it can find `config/`):
 ```bash
 # Go back to project root
 cd ../../
-./src_cpp/build/datacollector config/config.yaml
+./rpi_hailo_cpp/build/datacollector config/config.yaml
 ```
 
 ## Code Structure

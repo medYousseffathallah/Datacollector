@@ -17,6 +17,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(SQLite3 REQUIRED)
 
 include_directories(
+    src
     ${OpenCV_INCLUDE_DIRS}
     ${HAILORT_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIRS}
@@ -24,11 +25,11 @@ include_directories(
 )
 
 add_executable(datacollector
-    main.cpp
-    CameraManager.cpp
-    InferenceEngine.cpp
-    DatasetWriter.cpp
-    Utils.cpp
+    src/main.cpp
+    src/CameraManager.cpp
+    src/InferenceEngine.cpp
+    src/DatasetWriter.cpp
+    src/Utils.cpp
 )
 
 target_link_libraries(datacollector

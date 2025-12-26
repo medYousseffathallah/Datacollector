@@ -10,7 +10,7 @@ echo -e "${GREEN}=== Starting C++ Version Verification ===${NC}"
 
 # 1. Build
 echo -e "\n${GREEN}[1/3] Building C++ Project...${NC}"
-cd src_cpp
+# Assumes running from rpi_hailo_cpp directory
 if [ -d "build" ]; then
     rm -rf build
 fi
@@ -31,7 +31,7 @@ echo -e "${GREEN}Build successful.${NC}"
 
 # 2. Create Test Config
 echo -e "\n${GREEN}[2/3] Preparing Test Configuration...${NC}"
-cd ../../
+cd ../.. # Go to project root
 cat > config_cpp_test.yaml <<EOF
 system:
   device_id: "cpp_test_01"
@@ -74,7 +74,7 @@ mkdir -p dataset_cpp
 
 # 3. Run Simulation
 echo -e "\n${GREEN}[3/3] Running Simulation (10 seconds)...${NC}"
-./src_cpp/build/datacollector config_cpp_test.yaml &
+./rpi_hailo_cpp/build/datacollector config_cpp_test.yaml &
 PID=$!
 
 sleep 10
