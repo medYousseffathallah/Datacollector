@@ -1,0 +1,20 @@
+[Unit]
+Description=Edge AI Data Collector Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/datacollector
+ExecStart=/usr/bin/python3 -m src.main --config config/config.yaml
+Restart=always
+RestartSec=10
+# Environment variables if needed
+# Environment=PYTHONUNBUFFERED=1
+
+# Resource limits to prevent freezing the Pi
+MemoryMax=4G
+
+[Install]
+WantedBy=multi-user.target

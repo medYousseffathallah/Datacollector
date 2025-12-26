@@ -1,0 +1,5 @@
+opencv-python-headless
+numpy
+pyyaml
+ultralytics
+# torch and torchvision should be installed manually on Jetson (see JETSON_GUIDE.md)

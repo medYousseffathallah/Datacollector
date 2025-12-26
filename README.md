@@ -1,58 +1,56 @@
-# Edge AI Data Collector for YOLO Fine-tuning
+# Edge AI Data Collector System
 
-This system captures, labels, and stores annotated segmentation frames from multiple CCTV cameras, optimized for Raspberry Pi 5 with Hailo AI Accelerator.
+This project is a modular data collection system for edge AI devices. It captures video streams from CCTV cameras, performs real-time YOLO segmentation inference, and saves the data in YOLO format for fine-tuning.
 
-## Features
+## Supported Platforms
 
-- **Multi-Camera Support**: Handles multiple RTSP streams with auto-reconnect.
-- **Hailo Inference**: Real-time YOLO segmentation using HailoRT.
-- **YOLO Format**: Saves data directly in YOLO segmentation format (images + .txt labels).
-- **Edge Optimized**: Efficient threading and resource management.
-- **Configurable**: YAML-based configuration for streams, models, and capture rules.
+The system is architected into three independent implementations to support different hardware and performance requirements:
 
-## Requirements
+### 1. [Raspberry Pi Python Version](./rpi_hailo_python/)
 
-- Raspberry Pi 5 (8GB recommended)
-- Hailo AI HAT (Hailo-8 / Hailo-8L)
-- HailoRT installed (v4.17+)
-- Python 3.9+
+- **Path**: `rpi_hailo_python/`
+- **Hardware**: Raspberry Pi 5 + Hailo-8/8L AI HAT.
+- **Language**: Python.
+- **Use Case**: Standard deployment, easy to modify, rapid prototyping. Uses `hailo_platform` for inference.
 
-## Installation
+### 2. [Raspberry Pi C++ Version](./rpi_hailo_cpp/)
 
-1. **Install Dependencies**
+- **Path**: `rpi_hailo_cpp/`
+- **Hardware**: Raspberry Pi 5 + Hailo-8/8L AI HAT.
+- **Language**: C++.
+- **Use Case**: High-performance, low-latency deployment. Ideal for many cameras or high frame rates where Python's GIL is a bottleneck.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 3. [NVIDIA Jetson Version](./jetson_cuda_python/)
 
-   _Note: `hailo_platform` must be installed via the HailoRT PCIe driver / Python package instructions._
+- **Path**: `jetson_cuda_python/`
+- **Hardware**: NVIDIA Jetson Nano, NX, Orin.
+- **Language**: Python.
+- **Use Case**: Deployment on NVIDIA edge devices using CUDA and TensorRT (via Ultralytics).
 
-2. **Configuration**
-   Edit `config/config.yaml` to set your camera URLs and model path.
+---
 
-## Usage
+## Directory Structure
 
-Run the collector:
-
-```bash
-python -m src.main --config config/config.yaml
+```
+project/
+├── rpi_hailo_python/       # RPi 5 + Hailo (Python)
+│   ├── src/                # Source code
+│   ├── config/             # Configuration files
+│   ├── deploy/             # Systemd service files
+│   └── README.md           # Implementation details
+│
+├── rpi_hailo_cpp/          # RPi 5 + Hailo (C++)
+│   ├── src/                # C++ Source code
+│   ├── config/             # Configuration files
+│   ├── build/              # Compile artifacts (after building)
+│   └── README.md           # Implementation details
+│
+├── jetson_cuda_python/     # NVIDIA Jetson (Python)
+│   ├── src/                # Source code (CUDA-optimized)
+│   ├── config/             # Configuration files
+│   └── README.md           # Implementation details
 ```
 
-## Operations & Deployment
+## Getting Started
 
-For hardware integration, troubleshooting, and production deployment (systemd, auto-start), please refer to **[OPERATIONS.md](OPERATIONS.md)**.
-
-## Project Structure
-
-- `config/`: Configuration files.
-- `src/`: Source code.
-  - `camera_manager.py`: RTSP stream handling.
-  - `inference_engine.py`: HailoRT integration.
-  - `dataset_writer.py`: File saving and DB logging.
-- `dataset/`: Output directory for images/labels.
-
-## Deliverables
-
-- **Architecture**: Modular design with separate threads for capture, inference, and writing.
-- **Code**: `src/inference_engine.py` contains the HailoRT integration logic.
-- **Format**: Output follows standard YOLO segmentation format (normalized polygons).
+Navigate to the folder matching your hardware and follow the `README.md` inside.
