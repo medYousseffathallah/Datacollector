@@ -1,0 +1,56 @@
+system:
+  device_id: "rpi5_hailo_01"
+  log_level: "INFO"
+  headless: true
+
+cameras:
+  - id: "cam_01"
+    url: "rtsp://admin:password@192.168.1.101:554/stream1"
+    name: "FrontDoor"
+    enabled: true
+  - id: "cam_02"
+    url: "rtsp://admin:password@192.168.1.102:554/stream1"
+    name: "Warehouse"
+    enabled: true
+
+motion_detection:
+  enabled: true
+  threshold: 25   # Pixel intensity difference threshold
+  min_area: 500   # Minimum contour area to consider as motion
+
+inference:
+  # Using a smaller model (YOLOv8 Nano) for efficiency on NPU
+  model_path: "models/yolov8n_ppe.hef" 
+  network_name: "yolov8n_ppe"
+  input_shape: [640, 640]
+  score_threshold: 0.5
+  iou_threshold: 0.45
+  max_boxes: 100
+  # Specific class names for the PPE model
+  class_names:
+    [
+      "person",
+      "helmet",
+      "vest",
+      "glove",
+      "boots"
+    ]
+
+collection:
+  strategy: "interval"
+  interval_seconds: 2.0 # Check more frequently since we have motion detection
+  save_images: true
+  save_labels: true
+
+  # Collect specific classes based on requirements: Person, Work Outfit (Vest), Gear (Helmet)
+  target_classes: ["person", "helmet", "vest"]
+
+  # Conditions: Minimum confidence to save
+  min_confidence: 0.6
+
+storage:
+  base_path: "dataset_ppe"
+  images_dir: "images"
+  labels_dir: "labels"
+  database_path: "datacollector_ppe.db"
+  train_split: 0.8

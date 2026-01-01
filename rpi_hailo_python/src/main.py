@@ -82,6 +82,11 @@ class DataCollector:
                     last_time = self.last_capture_times.get(cam_id, 0)
                     if current_time - last_time < self.capture_interval:
                         continue
+
+                    # Check for motion if configured
+                    if not self.camera_manager.check_motion(cam_id, frame):
+                        # No motion detected, skip inference to save resources
+                        continue
                         
                     # Run inference on the current frame
                     results = self.inference_engine.infer(frame)

@@ -1,3 +1,4 @@
 {
-  "cmake.sourceDirectory": "C:/Users/youss/OneDrive/Desktop/project/datacollector/src_cpp"
+  "cmake.sourceDirectory": "C:/Users/youss/OneDrive/Desktop/project/datacollector/src_cpp",
+  "cmake.ignoreCMakeListsMissing": true
 }

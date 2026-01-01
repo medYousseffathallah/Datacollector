@@ -48,13 +48,27 @@ def mask_to_polygon(mask, epsilon_factor=0.001):
         points = approx.flatten().astype(float)
         
         # Normalize coordinates
-        # Contour points are x, y
-        points[0::2] /= w  # x
-        points[1::2] /= h  # y
+        points[0::2] /= w
+        points[1::2] /= h
         
         polygons.append(points.tolist())
         
     return polygons
+
+def ensure_directories(base_path, subdirs):
+    """
+    Ensure that the specified subdirectories exist under the base path.
+    Args:
+        base_path: The root directory.
+        subdirs: List of subdirectories (relative or absolute).
+    """
+    if not os.path.exists(base_path):
+        os.makedirs(base_path, exist_ok=True)
+        
+    for subdir in subdirs:
+        # If subdir is absolute, use it directly; otherwise join with base_path
+        path = subdir if os.path.isabs(subdir) else os.path.join(base_path, subdir)
+        os.makedirs(path, exist_ok=True)
 
 def format_yolo_label(class_id, polygons):
     """
@@ -66,11 +80,3 @@ def format_yolo_label(class_id, polygons):
         line = f"{class_id} " + " ".join([f"{p:.6f}" for p in poly])
         lines.append(line)
     return lines
-
-def ensure_directories(base_path, subdirs):
-    """
-    Ensure all subdirectories exist.
-    """
-    for sub in subdirs:
-        path = os.path.join(base_path, sub)
-        os.makedirs(path, exist_ok=True)

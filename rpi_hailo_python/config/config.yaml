@@ -13,6 +13,11 @@ cameras:
     name: "Warehouse"
     enabled: true
 
+motion_detection:
+  enabled: false
+  threshold: 25
+  min_area: 500
+
 inference:
   model_path: "models/yolov8s_seg.hef"
   network_name: "yolov8s_seg" # Helper for post-processing if needed

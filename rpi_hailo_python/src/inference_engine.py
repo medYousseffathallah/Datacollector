@@ -5,7 +5,9 @@ import cv2
 import threading
 from queue import Queue
 
-logger = logging.getLogger("InferenceEngine")
+from .utils import setup_logger
+
+logger = setup_logger("InferenceEngine")
 
 try:
     # Import Hailo Platform SDK
@@ -13,7 +15,20 @@ try:
     HAILO_AVAILABLE = True
 except ImportError:
     HAILO_AVAILABLE = False
-    logger.warning("hailo_platform not found. Running in MOCK mode.")
+    # Don't log warning yet, wait to see if fallback is available
+
+try:
+    from ultralytics import YOLO
+    ULTRALYTICS_AVAILABLE = True
+except ImportError:
+    ULTRALYTICS_AVAILABLE = False
+    
+# Log status after checking all backends
+if not HAILO_AVAILABLE:
+    if ULTRALYTICS_AVAILABLE:
+        logger.info("hailo_platform not found. Will attempt to use Ultralytics fallback.")
+    else:
+        logger.warning("hailo_platform AND ultralytics not found. System will run in MOCK mode.")
 
 class InferenceEngine:
     """
@@ -35,11 +50,26 @@ class InferenceEngine:
         self.network_group = None
         self.infer_pipeline = None
         self.hef = None
+        self.yolo_model = None
         
-        # Initialize Hailo hardware if available, else use Mock
+        # Initialize Hailo hardware if available, else use Mock/PC fallback
         if HAILO_AVAILABLE:
             self._init_hailo()
+        elif ULTRALYTICS_AVAILABLE and self.model_path.endswith('.pt'):
+             self._init_ultralytics()
         else:
+            self._init_mock()
+
+    def _init_ultralytics(self):
+        """
+        Initialize Ultralytics YOLO for PC testing.
+        """
+        try:
+            logger.info(f"Loading Ultralytics model: {self.model_path}")
+            self.yolo_model = YOLO(self.model_path)
+            logger.info("Ultralytics model loaded successfully.")
+        except Exception as e:
+            logger.error(f"Failed to load Ultralytics model: {e}")
             self._init_mock()
 
     def _init_hailo(self):
@@ -157,8 +187,63 @@ class InferenceEngine:
             # Run inference
             results = self.pipeline.infer(input_data)
             return self.post_process(results, frame.shape)
+        elif self.yolo_model:
+            return self.infer_ultralytics(frame)
         else:
             return self.mock_inference(frame.shape)
+
+    def infer_ultralytics(self, frame):
+        """
+        Run inference using Ultralytics YOLO (PC mode).
+        """
+        results = self.yolo_model(frame, verbose=False, conf=self.score_threshold)
+        
+        masks = []
+        class_ids = []
+        scores = []
+        
+        for r in results:
+            if r.masks:
+                # Get masks as numpy arrays
+                # r.masks.data is (N, H, W) tensor, need to resize to original image size if needed
+                # But r.masks.xy provides coordinates which might be easier?
+                # Actually r.masks.data is low res. r.masks.xy is polygon.
+                # Let's use the bitmap mask and resize it to frame size.
+                
+                # Iterate over each detection
+                for i, box in enumerate(r.boxes):
+                    cls_id = int(box.cls[0].item())
+                    conf = float(box.conf[0].item())
+                    
+                    # Get corresponding mask
+                    # Convert mask to binary numpy image
+                    # Note: r.masks.data[i] is on GPU/CPU tensor
+                    mask_tensor = r.masks.data[i]
+                    mask_np = mask_tensor.cpu().numpy().astype('uint8') * 255
+                    
+                    # Resize mask to original frame size
+                    mask_resized = cv2.resize(mask_np, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
+                    
+                    masks.append(mask_resized)
+                    class_ids.append(cls_id)
+                    scores.append(conf)
+            elif r.boxes:
+                 # If model is detection only (no seg), we can simulate a mask from box?
+                 # Or just skip. The DataCollector expects masks.
+                 # Let's create a box mask.
+                 for box in r.boxes:
+                    cls_id = int(box.cls[0].item())
+                    conf = float(box.conf[0].item())
+                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                    
+                    mask = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
+                    cv2.rectangle(mask, (x1, y1), (x2, y2), 255, -1)
+                    
+                    masks.append(mask)
+                    class_ids.append(cls_id)
+                    scores.append(conf)
+
+        return masks, class_ids, scores
 
     def post_process(self, results, original_shape):
         """
@@ -166,12 +251,18 @@ class InferenceEngine:
         This is highly dependent on the specific HEF output layers.
         For this template, we assume a simplified output structure or placeholder.
         """
-        # Placeholder for real post-processing logic
-        # You would typically:
-        # 1. Decode boxes
-        # 2. Decode masks (matrix mult with protos)
-        # 3. NMS
-        # For now, we return empty list to avoid crashing if user runs this without specific logic
+        # WARNING: This is a placeholder. 
+        # Real Hailo models return raw tensors that need:
+        # 1. Anchor decoding (if YOLO)
+        # 2. Sigmoid/Softmax activation
+        # 3. Non-Maximum Suppression (NMS)
+        # 4. Mask prototype multiplication (if Segmentation)
+        
+        # If you are using a standard Hailo Model Zoo model, 
+        # you should use the `hailo_model_zoo` post-processing utilities 
+        # or `hailo_rpi5_examples` post-processing code.
+        
+        # logger.warning("Post-processing not implemented for this model. Returning empty results.")
         return [], [], []
 
     def mock_inference(self, shape):
