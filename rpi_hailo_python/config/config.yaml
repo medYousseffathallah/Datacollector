@@ -14,121 +14,43 @@ cameras:
     enabled: true
 
 motion_detection:
-  enabled: false
-  threshold: 25
-  min_area: 500
+  enabled: true
+  threshold: 25   # Pixel intensity difference threshold
+  min_area: 500   # Minimum contour area to consider as motion
 
 inference:
-  model_path: "models/yolov8s_seg.hef"
-  network_name: "yolov8s_seg" # Helper for post-processing if needed
+  # Using a smaller model (YOLOv8 Nano) for efficiency on NPU
+  model_path: "models/ppe_best.hef" 
+  network_name: "yolov8n_ppe"
   input_shape: [640, 640]
   score_threshold: 0.5
   iou_threshold: 0.45
   max_boxes: 100
+  # Specific class names for the PPE model
   class_names:
     [
       "person",
-      "bicycle",
-      "car",
-      "motorcycle",
-      "airplane",
-      "bus",
-      "train",
-      "truck",
-      "boat",
-      "traffic light",
-      "fire hydrant",
-      "stop sign",
-      "parking meter",
-      "bench",
-      "bird",
-      "cat",
-      "dog",
-      "horse",
-      "sheep",
-      "cow",
-      "elephant",
-      "bear",
-      "zebra",
-      "giraffe",
-      "backpack",
-      "umbrella",
-      "handbag",
-      "tie",
-      "suitcase",
-      "frisbee",
-      "skis",
-      "snowboard",
-      "sports ball",
-      "kite",
-      "baseball bat",
-      "baseball glove",
-      "skateboard",
-      "surfboard",
-      "tennis racket",
-      "bottle",
-      "wine glass",
-      "cup",
-      "fork",
-      "knife",
-      "spoon",
-      "bowl",
-      "banana",
-      "apple",
-      "sandwich",
-      "orange",
-      "broccoli",
-      "carrot",
-      "hot dog",
-      "pizza",
-      "donut",
-      "cake",
-      "chair",
-      "couch",
-      "potted plant",
-      "bed",
-      "dining table",
-      "toilet",
-      "tv",
-      "laptop",
-      "mouse",
-      "remote",
-      "keyboard",
-      "cell phone",
-      "microwave",
-      "oven",
-      "toaster",
-      "sink",
-      "refrigerator",
-      "book",
-      "clock",
-      "vase",
-      "scissors",
-      "teddy bear",
-      "hair drier",
-      "toothbrush",
+      "helmet",
+      "vest",
+      "glove",
+      "boots"
     ]
 
 collection:
-  # Capture strategy: 'interval' (every N seconds) or 'frame_count' (every N frames)
   strategy: "interval"
-  interval_seconds: 5.0
+  interval_seconds: 2.0 # Check more frequently since we have motion detection
   save_images: true
   save_labels: true
 
-  # Filter which classes to collect (empty list = all)
-  target_classes: ["person", "forklift", "pallet"]
+  # Collect specific classes based on requirements: Person, Work Outfit (Vest), Gear (Helmet)
+  target_classes: ["person", "helmet", "vest"]
 
-  # Minimum confidence to trigger a save
+  # Conditions: Minimum confidence to save
   min_confidence: 0.6
 
-  # Optional: similarity check to avoid duplicates (0.0 to 1.0, 1.0 = identical)
-  # Not implemented in v1 but good for config
-  similarity_threshold: 0.95
-
 storage:
-  base_path: "dataset"
+  base_path: "dataset_ppe"
   images_dir: "images"
   labels_dir: "labels"
-  database_path: "datacollector.db"
-  train_split: 0.8 # 80% train, 20% val
+  database_path: "datacollector_ppe.db"
+  train_split: 0.8

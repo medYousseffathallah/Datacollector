@@ -186,83 +186,31 @@ class InferenceEngine:
             input_data = {self.input_vstream_info.name: np.expand_dims(processed_frame, axis=0)}
             # Run inference
             results = self.pipeline.infer(input_data)
-            return self.post_process(results, frame.shape)
+            return self.post_process_hailo(results, frame.shape)
         elif self.yolo_model:
             return self.infer_ultralytics(frame)
         else:
             return self.mock_inference(frame.shape)
 
-    def infer_ultralytics(self, frame):
+    def post_process_hailo(self, results, original_shape):
         """
-        Run inference using Ultralytics YOLO (PC mode).
+        Process raw Hailo output tensors into masks, class_ids, and scores.
+        NOTE: This is a placeholder structure. Actual implementation depends heavily
+        on the specific output layers of the compiled HEF.
+        
+        Typically Hailo TAPPAS or hailo_model_zoo provides parsers.
+        For raw YOLOv8 output, we usually get concatenated outputs or 3 separate heads.
+        
+        This simple implementation assumes the model was compiled with NMS on-chip
+        or standard YOLO output structure.
         """
-        results = self.yolo_model(frame, verbose=False, conf=self.score_threshold)
+        # TODO: Implement specific decoding logic based on HEF output layers.
+        # For now, return empty lists to prevent crash if run on hardware without full parser.
+        # In a real scenario, you would parse 'results' which is a dict of {output_layer_name: numpy_array}
         
-        masks = []
-        class_ids = []
-        scores = []
+        # Example pseudo-code for a model compiled with meta-arch (NMS included):
+        # detections = results['detections'] # shape [N, 6] (x1, y1, x2, y2, score, class)
         
-        for r in results:
-            if r.masks:
-                # Get masks as numpy arrays
-                # r.masks.data is (N, H, W) tensor, need to resize to original image size if needed
-                # But r.masks.xy provides coordinates which might be easier?
-                # Actually r.masks.data is low res. r.masks.xy is polygon.
-                # Let's use the bitmap mask and resize it to frame size.
-                
-                # Iterate over each detection
-                for i, box in enumerate(r.boxes):
-                    cls_id = int(box.cls[0].item())
-                    conf = float(box.conf[0].item())
-                    
-                    # Get corresponding mask
-                    # Convert mask to binary numpy image
-                    # Note: r.masks.data[i] is on GPU/CPU tensor
-                    mask_tensor = r.masks.data[i]
-                    mask_np = mask_tensor.cpu().numpy().astype('uint8') * 255
-                    
-                    # Resize mask to original frame size
-                    mask_resized = cv2.resize(mask_np, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
-                    
-                    masks.append(mask_resized)
-                    class_ids.append(cls_id)
-                    scores.append(conf)
-            elif r.boxes:
-                 # If model is detection only (no seg), we can simulate a mask from box?
-                 # Or just skip. The DataCollector expects masks.
-                 # Let's create a box mask.
-                 for box in r.boxes:
-                    cls_id = int(box.cls[0].item())
-                    conf = float(box.conf[0].item())
-                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                    
-                    mask = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
-                    cv2.rectangle(mask, (x1, y1), (x2, y2), 255, -1)
-                    
-                    masks.append(mask)
-                    class_ids.append(cls_id)
-                    scores.append(conf)
-
-        return masks, class_ids, scores
-
-    def post_process(self, results, original_shape):
-        """
-        Convert raw Hailo output to masks/boxes.
-        This is highly dependent on the specific HEF output layers.
-        For this template, we assume a simplified output structure or placeholder.
-        """
-        # WARNING: This is a placeholder. 
-        # Real Hailo models return raw tensors that need:
-        # 1. Anchor decoding (if YOLO)
-        # 2. Sigmoid/Softmax activation
-        # 3. Non-Maximum Suppression (NMS)
-        # 4. Mask prototype multiplication (if Segmentation)
-        
-        # If you are using a standard Hailo Model Zoo model, 
-        # you should use the `hailo_model_zoo` post-processing utilities 
-        # or `hailo_rpi5_examples` post-processing code.
-        
-        # logger.warning("Post-processing not implemented for this model. Returning empty results.")
         return [], [], []
 
     def mock_inference(self, shape):
