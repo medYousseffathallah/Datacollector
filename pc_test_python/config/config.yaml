@@ -1,7 +1,7 @@
 system:
   device_id: "pc_test_station"
   log_level: "INFO"
-  headless: false # Show window on PC
+  headless: true # Show window on PC
 
 cameras:
   - id: "webcam"
@@ -20,7 +20,7 @@ inference:
   # To test PPE specifically, download a PPE model (e.g. from Roboflow/HuggingFace)
   # and change this path to "models/yolov8n-ppe.pt"
   # model_path: "yolov8n.pt"
-  model_path: "models/ppe_best.pt" # Custom PPE model
+  model_path: "models/p4_ppe.onnx" # Custom PPE model with 17 classes
 
   network_name: "yolov8n"
   input_shape: [640, 640]
@@ -28,20 +28,26 @@ inference:
   iou_threshold: 0.45
   max_boxes: 100
 
-  # Standard COCO class names for yolov8n.pt
-  # If using a PPE model, update this list to ["person", "helmet", "vest", ...]
+  # Class names for the p4_ppe.pt model (17 classes)
   class_names:
     [
-      "Hardhat",
-      "Mask",
-      "NO-Hardhat",
-      "NO-Mask",
-      "NO-Safety Vest",
-      "Person",
-      "Safety Cone",
-      "Safety Vest",
-      "machinery",
-      "vehicle",
+      "person",
+      "ear",
+      "ear-mufs",
+      "face",
+      "face-guard",
+      "face-mask",
+      "foot",
+      "tool",
+      "glasses",
+      "gloves",
+      "helmet",
+      "hands",
+      "head",
+      "medical-suit",
+      "shoes",
+      "safety-suit",
+      "safety-vest",
     ]
 
 collection:
@@ -50,10 +56,20 @@ collection:
   save_images: true
   save_labels: true
 
-  # For the test with standard YOLOv8n, we just look for persons
-  # When you have the PPE model, change this to ["person", "helmet", "vest"]
+  # Target classes to collect data for from the p4_ppe.pt model
   target_classes:
-    ["Person", "Hardhat", "Safety Vest", "NO-Hardhat", "NO-Safety Vest"]
+    [
+      "person",
+      "helmet",
+      "safety-vest",
+      "ear-mufs",
+      "face-guard",
+      "face-mask",
+      "glasses",
+      "gloves",
+      "medical-suit",
+      "safety-suit",
+    ]
 
   min_confidence: 0.6
 

@@ -3,6 +3,7 @@ import time
 import threading
 import numpy as np
 import logging
+import os
 from queue import Queue, Empty
 
 logger = logging.getLogger("CameraManager")
@@ -99,7 +100,7 @@ class CameraStream:
 
     def _update(self):
         """
-        Internal loop to read frames from the camera.
+        Internal loop to read frames from the camera or video file.
         Handles reconnection logic on failure.
         """
         if self.url == "test":
@@ -114,6 +115,16 @@ class CameraStream:
                 time.sleep(1/15) # 15 FPS
             return
 
+        # Check if URL is a video file
+        is_video_file = False
+        if isinstance(self.url, str) and (self.url.endswith('.mp4') or self.url.endswith('.avi') or self.url.endswith('.mov') or self.url.endswith('.mkv')):
+            is_video_file = True
+            if not os.path.exists(self.url):
+                logger.error(f"Video file not found: {self.url}")
+                while self.running:
+                    time.sleep(1)
+                return
+
         # Handle numeric string for webcam index
         url_to_open = self.url
         if isinstance(self.url, str) and self.url.isdigit():
@@ -123,7 +134,7 @@ class CameraStream:
         while self.running:
             if not cap.isOpened():
                 self.connected = False
-                logger.warning(f"Camera {self.name} disconnected. Retrying in {self.reconnect_interval}s...")
+                logger.warning(f"Camera/Video {self.name} disconnected. Retrying in {self.reconnect_interval}s...")
                 time.sleep(self.reconnect_interval)
                 cap = cv2.VideoCapture(url_to_open)
                 continue
@@ -132,21 +143,33 @@ class CameraStream:
             ret, frame = cap.read()
             
             if not ret:
-                self.connected = False
-                logger.warning(f"Camera {self.name} failed to read frame. Reconnecting...")
-                cap.release()
-                time.sleep(self.reconnect_interval)
-                cap = cv2.VideoCapture(url_to_open)
-                continue
+                if is_video_file:
+                    # If it's a video file, loop it
+                    logger.info(f"Video file {self.name} ended. Looping...")
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    continue
+                else:
+                    # For other sources, try to reconnect
+                    self.connected = False
+                    logger.warning(f"Camera {self.name} failed to read frame. Reconnecting...")
+                    cap.release()
+                    time.sleep(self.reconnect_interval)
+                    cap = cv2.VideoCapture(url_to_open)
+                    continue
             
             # Store latest frame safely
             with self.lock:
                 self.latest_frame = frame.copy()
             
-            # Optional: Sleep to limit capture FPS if needed to save CPU, 
-            # but usually we want to clear the buffer so we read as fast as possible 
-            # or set CAP_PROP_BUFFERSIZE if supported.
-            # time.sleep(0.01) 
+            # Sleep to maintain approximate real-time playback for video files
+            if is_video_file:
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                if fps > 0:
+                    time.sleep(1 / fps)
+            else:
+                # Optional: Sleep to limit capture FPS for other sources
+                # time.sleep(0.01) 
+                pass
             
         cap.release()
 

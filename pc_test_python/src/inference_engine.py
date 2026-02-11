@@ -37,7 +37,7 @@ class InferenceEngine:
         self.yolo_model = None
         
         # Initialize Ultralytics or Mock
-        if ULTRALYTICS_AVAILABLE and self.model_path.endswith('.pt'):
+        if ULTRALYTICS_AVAILABLE and (self.model_path.endswith('.pt') or self.model_path.endswith('.onnx')):
              self._init_ultralytics()
         else:
             self._init_mock()
