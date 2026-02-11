@@ -1,79 +1,83 @@
-# Manual Steps for Raspberry Pi Deployment
+# Deployment Guide: Data Collector on Raspberry Pi 5
 
-This document outlines the manual steps required to compile the model and deploy the system to the Raspberry Pi 5 with Hailo AI Kit.
+**Project:** Smart PPE Detection System (Edge Data Collector)
+**Target Hardware:** Raspberry Pi 5 + Hailo-8L AI Kit
 
-## 1. Compile Model to HEF (Requires Hailo DFC)
+---
 
-The Hailo Dataflow Compiler (DFC) is required to convert the standard ONNX model into the Hailo Executable Format (.hef). This software typically runs on a Linux PC or Windows with WSL.
+## 1. System Overview
 
-### Step 1.1: Export to ONNX
+This document provides step-by-step instructions for deploying the Data Collector module. This device is designed to operate autonomously on the edge, capturing and filtering video data for the **EYE-D** ecosystem.
 
-Run the helper script on your PC:
+## 2. Prerequisites
 
-```bash
-python scripts/export_onnx.py --model models/ppe_best.pt --output models/ppe_best.onnx
-```
+- **Hardware**:
+  - Raspberry Pi 5 (8GB RAM recommended).
+  - Hailo-8L AI Kit (M.2 HAT + Neural Processing Unit).
+  - USB Webcam or IP Camera.
+- **Software**:
+  - Raspberry Pi OS (64-bit).
+  - HailoRT (Runtime) and Hailo TAPPAS installed.
 
-### Step 1.2: Compile (in DFC Environment)
+---
 
-Assuming you have the Hailo DFC installed (v3.27 or later), run the following Python commands in the DFC environment:
+## 3. Installation & Setup
 
-```python
-from hailo_sdk_client import ClientRunner
-
-model_name = "ppe_best"
-onnx_path = "ppe_best.onnx"
-chosen_hw_arch = "hailo8l" # Use 'hailo8' for Pi 5 AI Kit (it's actually Hailo-8L usually, check your kit)
-
-runner = ClientRunner(hw_arch=chosen_hw_arch)
-runner.translate_onnx_model(onnx_path, model_name)
-
-# Quantization (Required)
-# You need a calibration dataset. For simplicity, we can use random data or a few real images.
-# This is a simplified example.
-runner.optimize(calib_dataset)
-
-# Compile
-hef = runner.compile()
-with open(f"{model_name}.hef", "wb") as f:
-    f.write(hef)
-```
-
-**Note:** If you don't have DFC, you can use the **Hailo Model Zoo** pre-compiled models or ask someone with DFC access to compile `ppe_best.onnx` for `hailo8l`.
-
-## 2. Deploy to Raspberry Pi
-
-### Step 2.1: Transfer Files
-
-Copy the entire `rpi_hailo_python` folder and the compiled `ppe_best.hef` to the Pi.
+### Step 1: Transfer Files to the Pi
+Copy the application folder to the user directory on the Raspberry Pi.
 
 ```bash
+# From your development PC
 scp -r rpi_hailo_python pi@<PI_IP_ADDRESS>:~/datacollector
-scp models/ppe_best.hef pi@<PI_IP_ADDRESS>:~/datacollector/rpi_hailo_python/models/
 ```
 
-### Step 2.2: Install Dependencies on Pi
-
-SSH into the Pi and install requirements:
+### Step 2: Install Dependencies
+Connect to the Raspberry Pi and install the required Python libraries.
 
 ```bash
 ssh pi@<PI_IP_ADDRESS>
-cd ~/datacollector/rpi_hailo_python
+cd ~/datacollector
 pip install -r requirements.txt
-# Ensure hailo-platform is installed (usually comes with the AI Kit software suite)
 ```
+*Note: Ensure the `hailo-platform` wheel is installed (typically included with the Hailo software suite).*
 
-### Step 2.3: Update Configuration
+---
 
-Edit `config/config.yaml` on the Pi to point to the HEF file if needed (default is `models/ppe_best.hef`):
+## 4. Running the Application
 
-```yaml
-inference:
-  model_path: "models/ppe_best.hef"
-```
-
-### Step 2.4: Run
+### Standard Execution
+To start the data collector with the default configuration:
 
 ```bash
 python -m src.main --config config/config.yaml
 ```
+
+### Verifying Operation
+- The system will initialize the Hailo NPU.
+- Logs will indicate "Inference Engine: HailoAsyncInference initialized".
+- Images detected with PPE (Person, Helmet, Vest) will be saved to `dataset_ppe/images`.
+- Metadata is stored in `dataset_ppe/datacollector_ppe.db`.
+
+---
+
+## 5. Advanced: Model Compilation (Optional)
+
+If you need to update the AI model (e.g., after fine-tuning on new data), you must compile the model from PyTorch (`.pt`) or ONNX (`.onnx`) to Hailo Executable Format (`.hef`).
+
+**This step requires a PC with the Hailo Dataflow Compiler (DFC) installed.**
+
+1.  **Export to ONNX**:
+    ```bash
+    python scripts/export_onnx.py --model models/ppe_best.pt --output models/ppe_best.onnx
+    ```
+
+2.  **Compile with DFC**:
+    Use the Hailo DFC Python API to quantize and compile the model for the `hailo8l` architecture.
+    *Refer to the Hailo DFC User Guide for detailed calibration and compilation scripts.*
+
+3.  **Deploy New Model**:
+    Copy the generated `.hef` file to `models/` on the Pi and update `config/config.yaml`:
+    ```yaml
+    inference:
+      model_path: "models/new_model.hef"
+    ```

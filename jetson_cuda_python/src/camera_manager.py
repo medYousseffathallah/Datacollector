@@ -79,6 +79,10 @@ class CameraStream:
         if isinstance(self.url, str) and self.url.isdigit():
             url_to_open = int(self.url)
 
+        if isinstance(url_to_open, str) and url_to_open not in ['test']:
+            if '@' in url_to_open and '://' not in url_to_open:
+                url_to_open = 'rtsp://' + url_to_open
+
         if url_to_open == "test":
             while self.running:
                 # Generate dummy frame
@@ -87,7 +91,7 @@ class CameraStream:
                 with self.lock:
                     self.latest_frame = frame
                     self.connected = True
-                time.sleep(1/15) # 15 FPS
+                time.sleep(1/15) 
             return
 
         cap = cv2.VideoCapture(url_to_open)
